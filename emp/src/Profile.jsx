@@ -1,111 +1,26 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import './Profile.css';
 
-const Profile = ({ initialUser, onSave }) => {
-  const [userData, setUserData] = useState({
-    fullName: initialUser?.fullName || 'Soran Ahmed',
-    email: initialUser?.email || 'admin@mol.gov',
-    role: initialUser?.role || 'Admin',
-    currentPassword: '',
-    newPassword: '',
-  });
+const Profile = () => {
+  const [user, setUser] = useState(null);
 
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setUserData((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
-  };
+  useEffect(() => {
+    fetch('/profileData.json')
+      .then((res) => res.json())
+      .then((data) => setUser(data))
+      .catch((err) => console.error("Error fetching data:", err));
+  }, []);
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    if (onSave) {
-      onSave(userData);
-    }
-    alert('Profile updated successfully!');
-  };
-
-  const getInitials = (name) => {
-    return name
-      .split(' ')
-      .map((n) => n[0])
-      .join('')
-      .toUpperCase()
-      .slice(0, 2);
-  };
+  if (!user) {
+    return <div className="profile-container">Loading profile...</div>;
+  }
 
   return (
     <div className="profile-container">
-      <h2 className="profile-page-title">My Profile</h2>
-
-      <div className="profile-card">
-        <div className="profile-banner"></div>
-
-        <div className="profile-card-body">
-          <div className="profile-avatar-badge">
-            {getInitials(userData.fullName)}
-          </div>
-
-          <div className="profile-user-meta">
-            <h3 className="profile-user-name">{userData.fullName}</h3>
-            <p className="profile-user-email">{userData.email}</p>
-            <span className="profile-role-badge">{userData.role}</span>
-          </div>
-
-          <form onSubmit={handleSubmit} className="profile-form">
-            <div className="profile-input-group">
-              <label className="profile-label">FULL NAME</label>
-              <input
-                type="text"
-                name="fullName"
-                value={userData.fullName}
-                onChange={handleChange}
-                className="profile-input"
-              />
-            </div>
-
-            <div className="profile-input-group">
-              <label className="profile-label">EMAIL</label>
-              <input
-                type="email"
-                name="email"
-                value={userData.email}
-                onChange={handleChange}
-                className="profile-input"
-              />
-            </div>
-
-            <div className="profile-input-group">
-              <label className="profile-label">CURRENT PASSWORD</label>
-              <input
-                type="password"
-                name="currentPassword"
-                placeholder="••••••••"
-                value={userData.currentPassword}
-                onChange={handleChange}
-                className="profile-input"
-              />
-            </div>
-
-            <div className="profile-input-group">
-              <label className="profile-label">NEW PASSWORD</label>
-              <input
-                type="password"
-                name="newPassword"
-                placeholder="••••••••"
-                value={userData.newPassword}
-                onChange={handleChange}
-                className="profile-input"
-              />
-            </div>
-
-            <button type="submit" className="profile-save-btn">
-              Save Changes
-            </button>
-          </form>
-        </div>
-      </div>
+      <h2>Profile Page</h2>
+      <p><strong>Name:</strong> {user.name}</p>
+      <p><strong>Email:</strong> {user.email}</p>
+      <p><strong>Role:</strong> {user.role}</p>
     </div>
   );
 };
