@@ -135,3 +135,10 @@ body{
   margin-top: 10px;
   font-weight: 500;
 }
+
+.field-error {
+  color: #f87171;
+  font-size: 13px;
+  margin-top: 8px;
+  font-weight: 500;
+}
