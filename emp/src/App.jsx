@@ -3,6 +3,7 @@ import Login from "./Login";
 import EmployeeForm from "./components/EmployeeForm";
 import EmployeeTable from "./EmployeeTable";
 import EmployeeProfile from "./EmployeeProfile";
+import Profile from "./Profile";
 import krgLogo from "./assets/krg_logo.webp";
 import "./App.css";
 
@@ -89,6 +90,7 @@ function App() {
         onView={(emp) => setViewingEmployee(emp)}
         onDelete={handleDeleteEmployee}
       />
+      <Profile />
     </div>
   );
 }
