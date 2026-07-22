@@ -1,11 +1,33 @@
 import { useState } from "react";
 import "../styles/employeeform.css";
+
+// Only letters, spaces, hyphens and apostrophes — no digits or other symbols.
+// Covers names like "Anne-Marie" or "O'Neil" while blocking things like "John3".
+const NAME_REGEX = /^[A-Za-zÀ-ÖØ-öø-ÿ' -]*$/;
+
 function EmployeeForm({ onAddEmployee, message }) {
 
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [department, setDepartment] = useState("");
   const [role, setRole] = useState("");
+  const [nameError, setNameError] = useState("");
+
+  function handleNameChange(event) {
+    const value = event.target.value;
+
+    // Silently strip out anything that isn't a letter/space/hyphen/apostrophe,
+    // so numbers and symbols simply can't be typed into this field.
+    const cleaned = value.replace(/[^A-Za-zÀ-ÖØ-öø-ÿ' -]/g, "");
+
+    if (cleaned !== value) {
+      setNameError("Numbers and symbols aren't allowed in the name field.");
+    } else {
+      setNameError("");
+    }
+
+    setName(cleaned);
+  }
 
   function handleSubmit(event) {
 
@@ -21,9 +43,14 @@ function EmployeeForm({ onAddEmployee, message }) {
       return;
     }
 
+    if (!NAME_REGEX.test(name) || !name.trim()) {
+      setNameError("Please enter a valid name using letters only.");
+      return;
+    }
+
     const employee = {
 
-      name,
+      name: name.trim(),
       email,
       department,
       role
@@ -37,6 +64,7 @@ function EmployeeForm({ onAddEmployee, message }) {
     setEmail("");
     setDepartment("");
     setRole("");
+    setNameError("");
   }
   return (
 
@@ -56,8 +84,9 @@ function EmployeeForm({ onAddEmployee, message }) {
               type="text"
               placeholder="Enter employee name"
               value={name}
-              onChange={(e) => setName(e.target.value)}
+              onChange={handleNameChange}
             />
+            {nameError && <p className="field-error">{nameError}</p>}
           </div>
 
           <div className="form-group">

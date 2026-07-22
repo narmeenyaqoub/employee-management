@@ -83,6 +83,12 @@ function RegisterForm({ onBack }) {
   const [password, setPassword] = useState("");
   const [message, setMessage] = useState("");
 
+  function handleNameChange(e) {
+    // Strip anything that isn't a letter/space/hyphen/apostrophe so numbers
+    // and symbols can't be typed into the name field.
+    setName(e.target.value.replace(/[^A-Za-zÀ-ÖØ-öø-ÿ' -]/g, ""));
+  }
+
   async function handleRegister(e) {
     e.preventDefault();
     setMessage("");

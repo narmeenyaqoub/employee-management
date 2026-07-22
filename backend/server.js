@@ -1,6 +1,8 @@
 const express = require("express");
 const cors = require("cors");
 const bcrypt = require("bcryptjs");
+const jwt = require("jsonwebtoken");
+const db = require("./db");
 
 const app = express();
 const PORT = 5000;
@@ -12,53 +14,18 @@ app.get("/", (req, res) => {
   res.send("Backend is running!");
 });
 
-// ---- NEW: in-memory "users table" ----
-let users = [];
-let nextUserId = 1;
-
-// ---- NEW: Register endpoint ----
-app.post("/api/register", async (req, res) => {
-  const { name, email, password } = req.body;
-
-  // Validate required fields
-  if (!name || !email || !password) {
-    return res
-      .status(400)
-      .json({ error: "Name, email, and password are required." });
-  }
-
-  // Check if user already exists
-  const existingUser = users.find((u) => u.email === email);
-  if (existingUser) {
-    return res
-      .status(400)
-      .json({ error: "A user with that email already exists." });
-  }
-
-  // Hash the password before storing
-  const hashedPassword = await bcrypt.hash(password, 10);
-
-  const newUser = {
-    id: nextUserId++,
-    name,
-    email,
-    password: hashedPassword,
-  };
-
-  users.push(newUser);
-
-  // Never send the password back, even hashed
-  res
-    .status(201)
-    .json({ id: newUser.id, name: newUser.name, email: newUser.email });
-});
-
-const jwt = require("jsonwebtoken"); // add this near your other requires at the top
-
 // A secret key used to sign tokens — in a real app this would be in an environment variable
 const JWT_SECRET = "my-secret-key-for-assignment";
 
-// ---- NEW: Middleware to protect routes ----
+// Only letters, spaces, hyphens and apostrophes — no digits or other symbols.
+// Covers names like "Anne-Marie" or "O'Neil" while blocking things like "John3".
+const NAME_REGEX = /^[A-Za-zÀ-ÖØ-öø-ÿ' -]+$/;
+
+function isValidName(name) {
+  return typeof name === "string" && name.trim().length > 0 && NAME_REGEX.test(name.trim());
+}
+
+// ---- Middleware to protect routes ----
 function authenticateToken(req, res, next) {
   const authHeader = req.headers["authorization"]; // expected format: "Bearer <token>"
   const token = authHeader && authHeader.split(" ")[1];
@@ -76,7 +43,43 @@ function authenticateToken(req, res, next) {
   });
 }
 
-// ---- NEW: Login endpoint ----
+// ---- Register endpoint ----
+app.post("/api/register", async (req, res) => {
+  const { name, email, password } = req.body;
+
+  if (!name || !email || !password) {
+    return res
+      .status(400)
+      .json({ error: "Name, email, and password are required." });
+  }
+
+  if (!isValidName(name)) {
+    return res.status(400).json({
+      error: "Name can only contain letters, spaces, hyphens, and apostrophes — no numbers.",
+    });
+  }
+
+  const existingUser = db.getOne("SELECT id FROM users WHERE email = ?", [email]);
+  if (existingUser) {
+    return res
+      .status(400)
+      .json({ error: "A user with that email already exists." });
+  }
+
+  const hashedPassword = await bcrypt.hash(password, 10);
+
+  db.run("INSERT INTO users (name, email, password) VALUES (?, ?, ?)", [
+    name.trim(),
+    email,
+    hashedPassword,
+  ]);
+  const newUserId = db.lastInsertId();
+
+  // Never send the password back, even hashed
+  res.status(201).json({ id: newUserId, name: name.trim(), email });
+});
+
+// ---- Login endpoint ----
 app.post("/api/login", async (req, res) => {
   const { email, password } = req.body;
 
@@ -84,7 +87,7 @@ app.post("/api/login", async (req, res) => {
     return res.status(400).json({ error: "Email and password are required." });
   }
 
-  const user = users.find((u) => u.email === email);
+  const user = db.getOne("SELECT * FROM users WHERE email = ?", [email]);
   if (!user) {
     return res.status(401).json({ error: "Invalid email or password." });
   }
@@ -94,7 +97,6 @@ app.post("/api/login", async (req, res) => {
     return res.status(401).json({ error: "Invalid email or password." });
   }
 
-  // Create a token containing the user's id
   const token = jwt.sign({ id: user.id, email: user.email }, JWT_SECRET, {
     expiresIn: "2h",
   });
@@ -105,50 +107,54 @@ app.post("/api/login", async (req, res) => {
   });
 });
 
-// ---- NEW: Get all users (protected) ----
+// ---- Get all users (protected) ----
 app.get("/api/users", authenticateToken, (req, res) => {
-  // Never send passwords back
-  const safeUsers = users.map((u) => ({
-    id: u.id,
-    name: u.name,
-    email: u.email,
-  }));
-  res.json(safeUsers);
+  const users = db.getAll("SELECT id, name, email FROM users");
+  res.json(users);
 });
 
-// ---- NEW: Get single user profile (protected) ----
+// ---- Get single user profile (protected) ----
 app.get("/api/users/:id", authenticateToken, (req, res) => {
   const userId = parseInt(req.params.id);
-  const user = users.find((u) => u.id === userId);
+  const user = db.getOne("SELECT id, name, email FROM users WHERE id = ?", [userId]);
 
   if (!user) {
     return res.status(404).json({ error: "User not found." });
   }
 
-  res.json({ id: user.id, name: user.name, email: user.email });
+  res.json(user);
 });
 
-// ---- NEW: Update a user (protected) ----
+// ---- Update a user (protected) ----
 app.put("/api/users/:id", authenticateToken, (req, res) => {
   const userId = parseInt(req.params.id);
-  const user = users.find((u) => u.id === userId);
+  const user = db.getOne("SELECT * FROM users WHERE id = ?", [userId]);
 
   if (!user) {
     return res.status(404).json({ error: "User not found." });
   }
 
   const { name, email } = req.body;
-  if (name) user.name = name;
-  if (email) user.email = email;
 
-  res.json({ id: user.id, name: user.name, email: user.email });
+  if (name && !isValidName(name)) {
+    return res.status(400).json({
+      error: "Name can only contain letters, spaces, hyphens, and apostrophes — no numbers.",
+    });
+  }
+
+  const updatedName = name ? name.trim() : user.name;
+  const updatedEmail = email || user.email;
+
+  db.run("UPDATE users SET name = ?, email = ? WHERE id = ?", [
+    updatedName,
+    updatedEmail,
+    userId,
+  ]);
+
+  res.json({ id: userId, name: updatedName, email: updatedEmail });
 });
 
-// ---- NEW: in-memory "employees table" ----
-let employees = [];
-let nextEmployeeId = 1;
-
-// ---- NEW: Create employee (protected) ----
+// ---- Create employee (protected) ----
 app.post("/api/employees", authenticateToken, (req, res) => {
   const { name, email, department, role } = req.body;
 
@@ -158,27 +164,37 @@ app.post("/api/employees", authenticateToken, (req, res) => {
       .json({ error: "Name, email, department, and role are required." });
   }
 
-  const newEmployee = {
-    id: nextEmployeeId++,
-    name,
+  if (!isValidName(name)) {
+    return res.status(400).json({
+      error: "Name can only contain letters, spaces, hyphens, and apostrophes — no numbers.",
+    });
+  }
+
+  db.run(
+    "INSERT INTO employees (name, email, department, role) VALUES (?, ?, ?, ?)",
+    [name.trim(), email, department, role]
+  );
+  const newEmployeeId = db.lastInsertId();
+
+  res.status(201).json({
+    id: newEmployeeId,
+    name: name.trim(),
     email,
     department,
     role,
-  };
-
-  employees.push(newEmployee);
-  res.status(201).json(newEmployee);
+  });
 });
 
-// ---- NEW: Get all employees (protected) ----
+// ---- Get all employees (protected) ----
 app.get("/api/employees", authenticateToken, (req, res) => {
+  const employees = db.getAll("SELECT * FROM employees");
   res.json(employees);
 });
 
-// ---- NEW: Get single employee profile (protected) ----
+// ---- Get single employee profile (protected) ----
 app.get("/api/employees/:id", authenticateToken, (req, res) => {
   const employeeId = parseInt(req.params.id);
-  const employee = employees.find((e) => e.id === employeeId);
+  const employee = db.getOne("SELECT * FROM employees WHERE id = ?", [employeeId]);
 
   if (!employee) {
     return res.status(404).json({ error: "Employee not found." });
@@ -187,37 +203,60 @@ app.get("/api/employees/:id", authenticateToken, (req, res) => {
   res.json(employee);
 });
 
-// ---- NEW: Update employee (protected) ----
+// ---- Update employee (protected) ----
 app.put("/api/employees/:id", authenticateToken, (req, res) => {
   const employeeId = parseInt(req.params.id);
-  const employee = employees.find((e) => e.id === employeeId);
+  const employee = db.getOne("SELECT * FROM employees WHERE id = ?", [employeeId]);
 
   if (!employee) {
     return res.status(404).json({ error: "Employee not found." });
   }
 
   const { name, email, department, role } = req.body;
-  if (name) employee.name = name;
-  if (email) employee.email = email;
-  if (department) employee.department = department;
-  if (role) employee.role = role;
 
-  res.json(employee);
+  if (name && !isValidName(name)) {
+    return res.status(400).json({
+      error: "Name can only contain letters, spaces, hyphens, and apostrophes — no numbers.",
+    });
+  }
+
+  const updated = {
+    name: name ? name.trim() : employee.name,
+    email: email || employee.email,
+    department: department || employee.department,
+    role: role || employee.role,
+  };
+
+  db.run(
+    "UPDATE employees SET name = ?, email = ?, department = ?, role = ? WHERE id = ?",
+    [updated.name, updated.email, updated.department, updated.role, employeeId]
+  );
+
+  res.json({ id: employeeId, ...updated });
 });
 
-// ---- NEW: Delete employee (protected) ----
+// ---- Delete employee (protected) ----
 app.delete("/api/employees/:id", authenticateToken, (req, res) => {
   const employeeId = parseInt(req.params.id);
-  const index = employees.findIndex((e) => e.id === employeeId);
+  const employee = db.getOne("SELECT id FROM employees WHERE id = ?", [employeeId]);
 
-  if (index === -1) {
+  if (!employee) {
     return res.status(404).json({ error: "Employee not found." });
   }
 
-  employees.splice(index, 1);
+  db.run("DELETE FROM employees WHERE id = ?", [employeeId]);
   res.json({ message: "Employee deleted successfully." });
 });
 
-app.listen(PORT, () => {
-  console.log(`Server running on http://localhost:${PORT}`);
-});
+// The database must finish loading before the server starts accepting requests.
+db.initDatabase()
+  .then(() => {
+    app.listen(PORT, () => {
+      console.log(`Server running on http://localhost:${PORT}`);
+      console.log(`Data is stored persistently in backend/data.sqlite`);
+    });
+  })
+  .catch((err) => {
+    console.error("Failed to initialize database:", err);
+    process.exit(1);
+  });
