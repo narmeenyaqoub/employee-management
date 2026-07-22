@@ -90,7 +90,7 @@ function App() {
         onView={(emp) => setViewingEmployee(emp)}
         onDelete={handleDeleteEmployee}
       />
-      <Profile />
+      <Profile initialUser={viewingEmployee} />
     </div>
   );
 }
