@@ -1,125 +1,127 @@
 import { useState } from "react";
 import "../styles/employeeform.css";
-function EmployeeForm({ onAddEmployee }) {
+function EmployeeForm({ onAddEmployee, message }) {
 
-    const [name, setName] = useState("");
-    const [email, setEmail] = useState("");
-    const [department, setDepartment] = useState("");
-    const [role, setRole] = useState("");
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [department, setDepartment] = useState("");
+  const [role, setRole] = useState("");
 
-    function handleSubmit(event) {
+  function handleSubmit(event) {
 
-        event.preventDefault();
+    event.preventDefault();
 
-        if (
-            !name ||
-            !email ||
-            !department ||
-            !role
-        ) {
-            alert("Please fill in all fields.");
-            return;
-        }
-
-        const employee = {
-
-            name,
-            email,
-            department,
-            role
-
-        };
-
-        console.log(employee);
-        onAddEmployee(employee);
-
-        setName("");
-        setEmail("");
-        setDepartment("");
-        setRole("");
+    if (
+      !name ||
+      !email ||
+      !department ||
+      !role
+    ) {
+      alert("Please fill in all fields.");
+      return;
     }
-    return (
 
-       <div className="form-container">
-  <h2>Add New Employee</h2>
-  <p className="subtitle">Fill in the details to add a new employee</p>
+    const employee = {
 
-  <form className="employee-form" onSubmit={handleSubmit}>
+      name,
+      email,
+      department,
+      role
 
-    <div className="form-grid">
+    };
 
-      <div className="form-group">
-        <label>Full Name *</label>
-        <input
-          type="text"
-          placeholder="Enter employee name"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-        />
-      </div>
+    
+    onAddEmployee(employee);
 
-      <div className="form-group">
-        <label>Email Address *</label>
-        <input
-          type="email"
-          placeholder="Enter employee email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-        />
-      </div>
+    setName("");
+    setEmail("");
+    setDepartment("");
+    setRole("");
+  }
+  return (
 
-      <div className="form-group">
-        <label>Department *</label>
-        <select
-          value={department}
-          onChange={(e) => setDepartment(e.target.value)}
-        >
-          <option value="">Select Department</option>
-          <option value="IT">IT</option>
-          <option value="HR">HR</option>
-          <option value="Finance">Finance</option>
-          <option value="Marketing">Marketing</option>
-        </select>
-      </div>
+    <div className="form-container">
+      <h2>Add New Employee</h2>
+      <p className="subtitle">Fill in the details to add a new employee</p>
+      {message && (
+        <p className="success-message">{message}</p>
+      )}
+      <form className="employee-form" onSubmit={handleSubmit}>
 
-      <div className="form-group">
-        <label>Role *</label>
-        <input
-          type="text"
-          placeholder="Enter employee role"
-          value={role}
-          onChange={(e) => setRole(e.target.value)}
-        />
-      </div>
+        <div className="form-grid">
 
-</div>
+          <div className="form-group">
+            <label>Full Name *</label>
+            <input
+              type="text"
+              placeholder="Enter employee name"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+            />
+          </div>
 
-<div className="button-group">
+          <div className="form-group">
+            <label>Email Address *</label>
+            <input
+              type="email"
+              placeholder="Enter employee email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+            />
+          </div>
 
-    <button type="submit" className="submit-btn">
-        Add Employee
-    </button>
+          <div className="form-group">
+            <label>Department *</label>
+            <select
+              value={department}
+              onChange={(e) => setDepartment(e.target.value)}
+            >
+              <option value="">Select Department</option>
+              <option value="IT">IT</option>
+              <option value="HR">HR</option>
+              <option value="Finance">Finance</option>
+              <option value="Marketing">Marketing</option>
+            </select>
+          </div>
 
-    <button
-        type="button"
-        className="cancel-btn"
-        onClick={() => {
-            setName("");
-            setEmail("");
-            setDepartment("");
-            setRole("");
-        }}
-    >
-        Cancel
-    </button>
+          <div className="form-group">
+            <label>Role *</label>
+            <input
+              type="text"
+              placeholder="Enter employee role"
+              value={role}
+              onChange={(e) => setRole(e.target.value)}
+            />
+          </div>
+
+        </div>
+
+        <div className="button-group">
+
+          <button type="submit" className="submit-btn">
+            Add Employee
+          </button>
+
+          <button
+            type="button"
+            className="cancel-btn"
+            onClick={() => {
+              setName("");
+              setEmail("");
+              setDepartment("");
+              setRole("");
+            }}
+          >
+            Cancel
+          </button>
 
 
 
-</div>
-  </form>
-</div>
+        </div>
+      </form>
+    </div>
 
-    );
+  );
 
 }
 
