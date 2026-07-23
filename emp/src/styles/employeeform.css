@@ -135,7 +135,11 @@ body{
   margin-top: 10px;
   font-weight: 500;
 }
-
+.error-message {
+  color: red;
+  margin-top: 10px;
+  font-weight: 500;
+}
 .field-error {
   color: #f87171;
   font-size: 13px;

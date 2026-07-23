@@ -5,12 +5,13 @@ import "../styles/employeeform.css";
 // Covers names like "Anne-Marie" or "O'Neil" while blocking things like "John3".
 const NAME_REGEX = /^[A-Za-zÀ-ÖØ-öø-ÿ' -]*$/;
 
-function EmployeeForm({ onAddEmployee, message }) {
+function EmployeeForm({ employees, onAddEmployee, message, clearMessage }) {
 
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [department, setDepartment] = useState("");
   const [role, setRole] = useState("");
+  const [error, setError] = useState("");
   const [nameError, setNameError] = useState("");
 
   function handleNameChange(event) {
@@ -27,21 +28,44 @@ function EmployeeForm({ onAddEmployee, message }) {
     }
 
     setName(cleaned);
+    setError("");
+    clearMessage();
   }
 
-  function handleSubmit(event) {
+  async function handleSubmit(event) {
 
     event.preventDefault();
 
     if (
-      !name ||
-      !email ||
+      !name.trim() ||
+      !email.trim() ||
       !department ||
-      !role
+      !role.trim()
     ) {
-      alert("Please fill in all fields.");
+      clearMessage();
+      setError("Please fill in all fields.");
+      return;
+
+    }
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+    if (!emailRegex.test(email)) {
+      setError("Please enter a valid email address.");
       return;
     }
+    if (name.trim().length < 2) {
+      setError("Name must be at least 2 characters.");
+      return;
+    }
+    const emailExists = employees.some(
+      (emp) => emp.email.toLowerCase() === email.toLowerCase()
+    );
+
+    if (emailExists) {
+      setError("An employee with this email already exists.");
+      return;
+    }
+    setError("");
 
     if (!NAME_REGEX.test(name) || !name.trim()) {
       setNameError("Please enter a valid name using letters only.");
@@ -57,20 +81,23 @@ function EmployeeForm({ onAddEmployee, message }) {
 
     };
 
-    
-    onAddEmployee(employee);
+    const success = await onAddEmployee(employee);
 
-    setName("");
-    setEmail("");
-    setDepartment("");
-    setRole("");
-    setNameError("");
+    if (success) {
+      setName("");
+      setEmail("");
+      setDepartment("");
+      setRole("");
+      setNameError("");
+    }
+    setError("");
   }
   return (
 
     <div className="form-container">
       <h2>Add New Employee</h2>
       <p className="subtitle">Fill in the details to add a new employee</p>
+      {error && <p className="error-message">{error}</p>}
       {message && (
         <p className="success-message">{message}</p>
       )}
@@ -95,7 +122,7 @@ function EmployeeForm({ onAddEmployee, message }) {
               type="email"
               placeholder="Enter employee email"
               value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              onChange={(e) => { setEmail(e.target.value); setError(""); clearMessage(); }}
             />
           </div>
 
@@ -103,7 +130,7 @@ function EmployeeForm({ onAddEmployee, message }) {
             <label>Department *</label>
             <select
               value={department}
-              onChange={(e) => setDepartment(e.target.value)}
+              onChange={(e) => { setDepartment(e.target.value); setError(""); clearMessage(); }}
             >
               <option value="">Select Department</option>
               <option value="IT">IT</option>
@@ -119,7 +146,7 @@ function EmployeeForm({ onAddEmployee, message }) {
               type="text"
               placeholder="Enter employee role"
               value={role}
-              onChange={(e) => setRole(e.target.value)}
+              onChange={(e) => { setRole(e.target.value); setError(""); clearMessage(); }}
             />
           </div>
 
@@ -139,6 +166,8 @@ function EmployeeForm({ onAddEmployee, message }) {
               setEmail("");
               setDepartment("");
               setRole("");
+              setError("");
+              clearMessage();
             }}
           >
             Cancel

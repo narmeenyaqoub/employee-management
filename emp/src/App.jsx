@@ -11,6 +11,7 @@ function App() {
   const [token, setToken] = useState(null);
   const [employees, setEmployees] = useState([]);
   const [viewingEmployee, setViewingEmployee] = useState(null);
+  const [message, setMessage] = useState("");
 
   async function fetchEmployees(currentToken) {
     const response = await fetch("http://localhost:5000/api/employees", {
@@ -34,7 +35,15 @@ function App() {
       body: JSON.stringify(employee),
     });
     const newEmployee = await response.json();
-    setEmployees([...employees, newEmployee]);
+
+    if (response.ok) {
+      setEmployees([...employees, newEmployee]);
+      setMessage("Employee added successfully!");
+      return true;
+    } else {
+
+      return false;
+    }
   }
 
   async function handleDeleteEmployee(id) {
@@ -84,7 +93,12 @@ function App() {
       </header>
 
       <h2 className="section-title">Employees</h2>
-      <EmployeeForm onAddEmployee={handleAddEmployee} />
+      <EmployeeForm
+        employees={employees}
+        onAddEmployee={handleAddEmployee}
+        message={message}
+        clearMessage={() => setMessage("")}
+      />
       <EmployeeTable
         employees={employees}
         onView={(emp) => setViewingEmployee(emp)}

@@ -47,10 +47,24 @@ function authenticateToken(req, res, next) {
 app.post("/api/register", async (req, res) => {
   const { name, email, password } = req.body;
 
-  if (!name || !email || !password) {
+  if (!name?.trim() ||
+    !email?.trim() ||
+    !password?.trim()) {
     return res
       .status(400)
       .json({ error: "Name, email, and password are required." });
+  }
+  if (password.length < 8) {
+    return res
+      .status(400)
+      .json({ error: "Password must be at least 8 characters." });
+  }
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+  if (!emailRegex.test(email)) {
+    return res.status(400).json({
+      error: "Invalid email address.",
+    });
   }
 
   if (!isValidName(name)) {
@@ -83,7 +97,7 @@ app.post("/api/register", async (req, res) => {
 app.post("/api/login", async (req, res) => {
   const { email, password } = req.body;
 
-  if (!email || !password) {
+  if (!email?.trim() || !password?.trim()) {
     return res.status(400).json({ error: "Email and password are required." });
   }
 
@@ -158,10 +172,37 @@ app.put("/api/users/:id", authenticateToken, (req, res) => {
 app.post("/api/employees", authenticateToken, (req, res) => {
   const { name, email, department, role } = req.body;
 
-  if (!name || !email || !department || !role) {
+  if (!name?.trim() ||
+    !email?.trim() ||
+    !department?.trim() ||
+    !role?.trim()) {
     return res
       .status(400)
       .json({ error: "Name, email, department, and role are required." });
+  }
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+  if (!emailRegex.test(email)) {
+    return res.status(400).json({
+      error: "Invalid email address.",
+    });
+  }
+  const existingEmployee = db.getOne(
+    "SELECT id FROM employees WHERE email = ?",
+    [email]
+  );
+
+  if (existingEmployee) {
+    return res.status(400).json({
+      error: "An employee with this email already exists.",
+    });
+  }
+  const validDepartments = ["IT", "HR", "Finance", "Marketing"];
+
+  if (!validDepartments.includes(department)) {
+    return res.status(400).json({
+      error: "Invalid department."
+    });
   }
 
   if (!isValidName(name)) {
